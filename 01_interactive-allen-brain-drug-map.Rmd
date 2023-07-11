@@ -1,0 +1,493 @@
+---
+title: "interactive allen brain drug map"
+author: "Muhammad Elsadany"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align='center')
+rm(list = ls())
+gc()
+source("https://raw.githubusercontent.com/melsadany/workbench/master/msmuhammad-source.R", local = T)
+
+theme_set(theme_minimal())
+formatted_tbl <- function(x) {
+  kableExtra::kable_styling(knitr::kable(x))
+}
+```
+
+```{r, fig.cap="DL first, and then glm"}
+setwd("/Dedicated/jmichaelson-wdata/msmuhammad//projects/brain-drug-map")
+library(plotly)
+med <- "methylphenidate"
+# raw.glm.data <- read_rds("data/glm-predictions.rds")
+raw.glm.data.whole <- read_rds("data/glm-predictions-lincs_no-region-label_annot-pos.rds")
+atlas.annot <- read_rds("/Dedicated/jmichaelson-wdata/msmuhammad/refs/mni_icbm152_nlin_sym_09c_CerebrA_nifti/annotated-xyz.rds")
+raw.glm.data <- left_join(atlas.annot%>%select(starts_with("mni"), contains("region")), raw.glm.data.whole)
+annotations <- raw.glm.data[,1:5]
+raw.glm.data <- raw.glm.data[,6:ncol(raw.glm.data)]
+# raw.DL.predictions <- read_rds("data/model-derivatives/predictions.rds") %>% as.data.frame()
+raw.DL.predictions.whole <- read_rds("data/model-derivatives/predictions-lincs_no-region-label.rds") %>%
+  as.data.frame()
+raw.DL.predictions.whole <- cbind(raw.glm.data.whole[,1:3], raw.DL.predictions.whole)
+colnames(raw.DL.predictions.whole) <- colnames(raw.glm.data.whole)
+raw.DL.predictions <- left_join(atlas.annot%>%select(starts_with("mni"), contains("region")), raw.DL.predictions.whole)
+raw.DL.predictions <- raw.DL.predictions[,6:ncol(raw.DL.predictions)]
+
+data.frame(dl = raw.DL.predictions[,med], 
+           glm = raw.glm.data[,med]) %>%
+  ggplot(aes(x=dl, y=glm)) +
+  geom_smooth()
+
+data <- cbind(raw.DL.predictions[,med],annotations) %>%
+  as.data.frame() %>%
+  rename(corr=1) %>%
+  mutate(region_2 = sub("_", " ", region)) %>%
+  mutate(h_region = sub("rh_", "right ", h_region)) %>%
+  mutate(h_region = sub("lh_", "left ", h_region)) %>%
+  mutate(h_region = sub("_", " ", h_region))
+
+glm.data <- cbind(raw.glm.data[,med],annotations) %>%
+  as.data.frame() %>%
+  rename(corr=1) %>%
+  mutate(region_2 = sub("_", " ", region)) %>%
+  mutate(h_region = sub("rh_", "right ", h_region)) %>%
+  mutate(h_region = sub("lh_", "left ", h_region)) %>%
+  mutate(h_region = sub("_", " ", h_region))
+
+sample <- sample(1:nrow(glm.data), size = 200000)
+
+plot_ly(data[sample,], x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+plot_ly(glm.data[sample,], x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+
+plot_ly(data%>% filter(mni_z==-8), x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+plot_ly(glm.data%>% filter(mni_z==-8), x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+
+plot_ly(data%>% filter(mni_x==6), x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+plot_ly(glm.data%>% filter(mni_x==6), x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, color = ~corr, size = 5) %>%
+  add_markers()
+
+```
+
+**DL**
+
+```{r, fig.cap="isn't the best, can't adjust color for different correlations between both hemispheres"}
+avg.data <- data %>%
+  group_by(region_2) %>%
+  summarize(mean_corr = mean(corr)) %>%
+  rename(region=region_2)
+library(ggsegDKT)
+col <- data.frame(region=as.vector(names(dkt$palette)), col1 = as.vector((dkt$palette)))
+avg.data <- left_join(col, avg.data)
+
+new.dkt <- dkt
+new.dkt$palette <- avg.data$mean_corr
+names(new.dkt$palette) <- avg.data$region
+library(ggseg)
+# plot(new.dkt)
+
+avg.data %>%
+  ggplot() +
+  geom_brain(atlas = dkt,
+             position = position_brain(hemi ~ side),
+             aes(fill = mean_corr)) +
+  theme_classic() +
+  theme(axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank())
+```
+
+
+**glm**
+
+```{r, fig.cap="isn't the best, can't adjust color for different correlations between both hemispheres"}
+avg.data.glm <- glm.data %>%
+  group_by(region_2) %>%
+  summarize(mean_corr = mean(corr)) %>%
+  rename(region=region_2)
+col.glm <- data.frame(region=as.vector(names(dkt$palette)), col1 = as.vector((dkt$palette)))
+avg.data.glm <- left_join(col.glm, avg.data.glm)
+
+new.dkt.glm <- dkt
+new.dkt.glm$palette <- avg.data.glm$mean_corr
+names(new.dkt.glm$palette) <- avg.data.glm$region
+avg.data.glm %>%
+  ggplot() +
+  geom_brain(atlas = dkt,
+             position = position_brain(hemi ~ side),
+             aes(fill = mean_corr)) +
+  theme_classic() +
+  theme(axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank())
+```
+
+
+```{r, fig.cap="this is a first trial, hemisphere colors are not adjusted"}
+library(ggseg3d)
+data.3d <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "right") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d <- left_join(data.3d, avg.data)
+ggseg3d(data.3d, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"))
+```
+
+
+**DL**
+
+```{r, fig.cap="only plotting the subcortical regions with other non-cortical ones"}
+# h_data
+avg.h.data <- data %>%
+  group_by(h_region) %>%
+  summarize(mean_corr = mean(corr)) %>%
+  rename(region=h_region)
+
+h.data.3d <- aseg_3d %>% 
+  unnest(cols = ggseg_3d) %>% 
+  select(label) %>%
+  mutate(atlas_label=label) %>%
+  mutate(label = tolower(label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  arrange(label)
+# this is me editing the labels manually to match same annotation of the data
+h.data.3d$region <- c("left third ventricle", "left fourth ventricle",
+                      "left brainstem", rep(NA,5), h.data.3d$label[9:11],
+                      "left cerebellum gray matter", h.data.3d$label[13:14],
+                      "left inferior lateral ventricle", 
+                      h.data.3d$label[16:18], "left thalamus",
+                      "left ventral diencephalon",
+                      h.data.3d$label[21:23],
+                      "right cerebellum gray matter", h.data.3d$label[25:26],
+                      "right inferior lateral ventricle", 
+                      h.data.3d$label[28:30], "right thalamus",
+                      "right ventral diencephalon")
+h.data.3d.2 <- left_join(h.data.3d, avg.h.data) %>%
+  # filter(!grepl("Ventricle|Putamen|Amygdala", label)) %>% 
+  drop_na() %>%
+  select(-region, -label) %>%
+  rename(label=atlas_label)
+ggseg3d(h.data.3d.2, atlas = aseg_3d, 
+        colour = "mean_corr", text = "mean_corr", 
+        na.alpha= .5) %>% 
+  add_glassbrain() 
+  
+```
+
+
+**glm**
+
+```{r, fig.cap="only plotting the subcortical regions with other non-cortical ones"}
+# h_data
+avg.h.data.glm <- glm.data %>%
+  group_by(h_region) %>%
+  summarize(mean_corr = mean(corr)) %>%
+  rename(region=h_region)
+
+h.data.3d.glm <- aseg_3d %>% 
+  unnest(cols = ggseg_3d) %>% 
+  select(label) %>%
+  mutate(atlas_label=label) %>%
+  mutate(label = tolower(label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  arrange(label)
+# this is me editing the labels manually to match same annotation of the data
+h.data.3d.glm$region <- c("left third ventricle", "left fourth ventricle",
+                      "left brainstem", rep(NA,5), h.data.3d$label[9:11],
+                      "left cerebellum gray matter", h.data.3d$label[13:14],
+                      "left inferior lateral ventricle", 
+                      h.data.3d$label[16:18], "left thalamus",
+                      "left ventral diencephalon",
+                      h.data.3d$label[21:23],
+                      "right cerebellum gray matter", h.data.3d$label[25:26],
+                      "right inferior lateral ventricle", 
+                      h.data.3d$label[28:30], "right thalamus",
+                      "right ventral diencephalon")
+h.data.3d.2.glm <- left_join(h.data.3d.glm, avg.h.data.glm) %>%
+  # filter(!grepl("Ventricle|Putamen|Amygdala", label)) %>% 
+  drop_na() %>%
+  select(-region, -label) %>%
+  rename(label=atlas_label)
+ggseg3d(h.data.3d.2.glm, atlas = aseg_3d, 
+        colour = "mean_corr", text = "mean_corr", 
+        na.alpha= .5) %>% 
+  add_glassbrain() 
+  
+```
+
+
+
+**DL**
+
+```{r, fig.cap="rh"}
+# cortex by hemisphere data
+data.3d.rh <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "right") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.rh <- left_join(data.3d.rh, avg.h.data %>%
+                       filter(!grepl("left", region)) %>%
+                       mutate(region = sub("right ", "", region)))
+ggseg3d(data.3d.rh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "right") %>%
+  remove_axes() %>% 
+  pan_camera("right lateral")
+
+
+
+# saving
+
+library(htmlwidgets)
+# Save viewer settings (e.g. RStudio viewer pane)
+op <- options()
+# Set viewer to web browser
+options(viewer = NULL)
+fig <- ggseg3d(data.3d.rh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "right") %>%
+  remove_axes() %>% 
+  pan_camera("right lateral")
+fig %>%
+  htmlwidgets::onRender(
+  "function(el, x) {
+  var gd = document.getElementById(el.id); 
+  Plotly.downloadImage(gd, {format: 'svg', width: 1000, height: 800, filename: 'plot'});
+  }"
+ )
+# Restore viewer to old setting (e.g. RStudio)
+options(viewer = op$viewer)
+```
+
+
+**glm**
+
+```{r, fig.cap="rh"}
+# cortex by hemisphere data
+data.3d.rh.glm <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "right") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.rh.glm <- left_join(data.3d.rh.glm, avg.h.data.glm %>%
+                       filter(!grepl("left", region)) %>%
+                       mutate(region = sub("right ", "", region)))
+ggseg3d(data.3d.rh.glm, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "right")
+```
+
+**DL**
+
+```{r, fig.cap="lh"}
+data.3d.lh <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "left") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.lh <- left_join(data.3d.lh, avg.h.data %>%
+                       filter(!grepl("right", region)) %>%
+                       mutate(region = sub("left ", "", region)))
+ggseg3d(data.3d.lh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "left")
+
+
+```
+
+
+**glm**
+
+```{r, fig.cap="lh"}
+data.3d.lh.glm <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "left") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.lh.glm <- left_join(data.3d.lh.glm, avg.h.data.glm %>%
+                       filter(!grepl("right", region)) %>%
+                       mutate(region = sub("left ", "", region)))
+ggseg3d(data.3d.lh.glm, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "left")
+
+
+```
+
+### saving section for graphical abstract and poster figures 
+
+```{r}
+# saving
+
+library(htmlwidgets)
+# Save viewer settings (e.g. RStudio viewer pane)
+op <- options()
+# Set viewer to web browser
+options(viewer = NULL)
+ggseg3d(data.3d.lh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "left") %>%
+  remove_axes() %>% 
+  pan_camera("left lateral") %>%
+  htmlwidgets::onRender(
+  "function(el, x) {
+  var gd = document.getElementById(el.id); 
+  Plotly.downloadImage(gd, {format: 'svg', width: 1000, height: 800, filename: 'meph-lh'});
+  }"
+ )
+
+scene <- list(camera = list(eye = list(x = 1.5, y = 0, z = 0)))
+
+plot_ly(data[sample[1:15000],], x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.001, size = 0.000000000000001) %>%
+  add_markers() %>%
+  remove_axes() %>% 
+  layout(scene = scene) %>%
+  # pan_camera("left lateral") %>%
+  htmlwidgets::onRender(
+  "function(el, x) {
+  var gd = document.getElementById(el.id); 
+  Plotly.downloadImage(gd, {format: 'svg', width: 1000, height: 800, filename: 'full-brain-points'});
+  }"
+ )
+
+allen.xyz <- read_tsv("data/allen-xyz-pos.tsv")
+plot_ly(allen.xyz, x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.001, size = 0.000000000000001) %>%
+  add_markers() %>%
+  remove_axes() %>% 
+  layout(scene = scene) %>%
+  # pan_camera("left lateral") %>%
+  htmlwidgets::onRender(
+  "function(el, x) {
+  var gd = document.getElementById(el.id); 
+  Plotly.downloadImage(gd, {format: 'svg', width: 1000, height: 800, filename: 'Allen-brain-points'});
+  }"
+)
+
+# Restore viewer to old setting (e.g. RStudio)
+options(viewer = op$viewer)
+
+
+
+fig <- plot_ly(allen.xyz, x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.6, size = 0.0000001) %>%
+  add_markers() %>%
+  remove_axes() %>% 
+  layout(scene = scene)  %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "Allen-xyz",
+      width = 800,
+      height = 700
+    )
+  )
+# save_image(fig, "allen-xyz-pos.svg")
+# kaleido(fig, "allen-xyz-pos.svg")
+plot_ly(glm.data[sample[1:15000],], x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.001, color = ~corr, size = 3) %>%
+  add_markers(sizes = 8) %>%
+  remove_axes() %>% 
+  layout(scene = scene)  %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "predicted-xyz",
+      width = 800,
+      height = 700
+    )
+  )
+
+
+# subcortical
+ggseg3d(h.data.3d.2.glm, atlas = aseg_3d, 
+        colour = "mean_corr", text = "mean_corr", 
+        na.alpha= .5) %>% 
+  add_glassbrain()  %>%
+  remove_axes() %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "predicted-subcort",
+      width = 800,
+      height = 700
+    )
+  )
+
+# hemispheres
+ggseg3d(data.3d.rh.glm, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen", "white", "firebrick"), hemisphere = "right")  %>%
+  remove_axes() %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "predicted-cort",
+      width = 800,
+      height = 700
+    )
+  )
+
+plot_ly(inner_join(allen.xyz, data), x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.001, color = ~corr, size = 3) %>%
+  add_markers(sizes = 23) %>%
+  remove_axes() %>% 
+  layout(scene = scene)  %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "predicted-xyz",
+      width = 800,
+      height = 700
+    )
+  )
+```
+```{r}
+tt <- read_rds("data/mni-whole-brain-hit.rds")%>%select(starts_with("mni"))%>%as.data.frame()
+plot_ly(tt, x =~mni_x, y =~mni_y, z =~mni_z,alpha = 0.001, size = 3) %>%
+  add_markers() %>%
+  layout()
+plot_ly(allen.xyz, x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.001, size = 0.000000000000001) %>%
+  add_markers() %>%
+  # remove_axes() %>% 
+  layout(scene = scene) %>%
+  # pan_camera("left lateral") %>%
+  htmlwidgets::onRender(
+  "function(el, x) {
+  var gd = document.getElementById(el.id); 
+  Plotly.downloadImage(gd, {format: 'svg', width: 1000, height: 800, filename: 'Allen-brain-points'});
+  }"
+)
+
+```
+
