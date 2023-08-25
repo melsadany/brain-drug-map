@@ -1,0 +1,15 @@
+#! /bin/bash
+#$ -cwd
+#$ -q UI-HM
+#$ -pe smp 80
+#$ -N brain-drug-correlation-from-predicted-gene-exp
+#$ -o logs/$JOB_NAME.$TASK_ID.log
+#$ -j y
+#$ -ckpt user
+
+conda activate tximpute2
+PROJECT_DIR=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map
+cd $PROJECT_DIR
+
+RSCRIPT_F=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/02_brain-drug-correlation-from-predicted-gene-exp.R
+Rscript $RSCRIPT_F 

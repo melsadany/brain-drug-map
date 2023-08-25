@@ -1,0 +1,15 @@
+#! /bin/bash
+#$ -cwd
+#$ -q JM-GPU
+#$ -pe smp 80
+#$ -N brain-gene-exp-predictions
+#$ -o logs/$JOB_NAME.$TASK_ID.log
+#$ -j y
+#$ -ckpt user
+
+conda activate EDL
+PROJECT_DIR=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map
+cd $PROJECT_DIR
+
+RSCRIPT_F=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/01_brain-gene-exp-predictions.R
+Rscript $RSCRIPT_F 
