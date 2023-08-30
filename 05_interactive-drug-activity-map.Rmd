@@ -1,0 +1,150 @@
+---
+title: "drug activity map"
+author: "Muhammad"
+date: '2023-04-12'
+output: html_document
+    code_folding: hide
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align='center')
+rm(list = ls())
+gc()
+source("/Dedicated/jmichaelson-wdata/msmuhammad/msmuhammad-source.R", local = T)
+
+theme_set(theme_minimal())
+formatted_tbl <- function(x) {
+  kableExtra::kable_styling(knitr::kable(x))
+}
+```
+
+
+```{r}
+project.dir <- "/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map"
+setwd(project.dir)
+################################################################
+library(plotly)
+################################################################
+annot <- read_rds("/wdata/msmuhammad/refs/mni_icbm152_nlin_sym_09c_CerebrA_nifti/annotated-xyz.rds")[,5:9]
+
+med <- "methylphenidate"
+drug.maps <- pdsload("data/subsetof-drug-map-predicted-exp-whole-brain-082223.rds.pxz")
+
+mph.map <- inner_join(annot,
+                      cbind(drug.maps[,4:6], drug.maps[,med])) %>%
+  as.data.frame() %>%
+  rename(corr=6) %>%
+  mutate(region_2 = sub("_", " ", region)) %>%
+  mutate(h_region = sub("rh_", "right ", h_region)) %>%
+  mutate(h_region = sub("lh_", "left ", h_region)) %>%
+  mutate(h_region = sub("_", " ", h_region))
+
+sample <- sample(1:nrow(mph.map), size = 200000)
+
+# blue points representing a samples of positions that we have data for
+plot_ly(mph.map[sample,], x =~mni_x, y=~mni_y,  z=~mni_z,alpha = 0.7, size = 5) %>%
+  add_markers()
+```
+
+
+```{r}
+# averaging data based on h_region label
+avg.h.data <- mph.map %>%
+  group_by(h_region) %>%
+  dplyr::summarize(mean_corr = mean(corr)) %>%
+  drop_na()
+
+library(ggseg3d)
+library(ggsegDKT)
+library(ggseg)
+```
+
+
+```{r}
+# left hemisphere
+data.3d.lh <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "left") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.lh <- left_join(data.3d.lh, 
+                        avg.h.data %>%
+                          filter(!grepl("right", h_region)) %>%
+                          mutate(region = sub("left ", "", h_region)))
+ggseg3d(data.3d.lh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen" = min(data.3d.lh$mean_corr), 
+                    "white" = 0, 
+                    "firebrick" = max(data.3d.lh$mean_corr)), 
+        hemisphere = "left")
+
+```
+
+```{r}
+# right hemisphere
+data.3d.rh <- dkt_3d %>%
+  filter(surf == "inflated" & hemi == "right") %>% 
+  unnest(ggseg_3d) %>% 
+  ungroup() %>% 
+  select(region) %>% 
+  na.omit()
+data.3d.rh <- left_join(data.3d.rh, 
+                        avg.h.data %>%
+                          filter(!grepl("left", h_region)) %>%
+                          mutate(region = sub("right ", "", h_region)))
+ggseg3d(data.3d.rh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen" = min(data.3d.rh$mean_corr), 
+                    "white" = 0, 
+                    "firebrick" = max(data.3d.rh$mean_corr)), 
+        hemisphere = "right")
+
+```
+
+
+```{r}
+# plotting of subcortical regions
+h.data.3d <- aseg_3d %>% 
+  unnest(cols = ggseg_3d) %>% 
+  select(label) %>%
+  mutate(atlas_label=label) %>%
+  mutate(label = tolower(label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("-", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  mutate(label = sub("_", " ", label)) %>%
+  arrange(label)
+
+# this is me editing the labels manually to match same annotation of the data that I have
+h.data.3d$region <- c("left third ventricle", "left fourth ventricle",
+                      "left brainstem", rep(NA,5), h.data.3d$label[9:11],
+                      "left cerebellum gray matter", h.data.3d$label[13:14],
+                      "left inferior lateral ventricle", 
+                      h.data.3d$label[16:18], "left thalamus",
+                      "left ventral diencephalon",
+                      h.data.3d$label[21:23],
+                      "right cerebellum gray matter", h.data.3d$label[25:26],
+                      "right inferior lateral ventricle", 
+                      h.data.3d$label[28:30], "right thalamus",
+                      "right ventral diencephalon")
+h.data.3d.2 <- left_join(h.data.3d, avg.h.data %>% rename(region = h_region)) %>%
+  # filter(!grepl("Ventricle|Putamen|Amygdala", label)) %>% 
+  drop_na() %>%
+  select(-region, -label) %>%
+  rename(label=atlas_label)
+ggseg3d(h.data.3d.2, atlas = aseg_3d, 
+        colour = "mean_corr", text = "mean_corr", 
+        na.alpha= .5,
+        palette = c("forestgreen"= min(h.data.3d.2$mean_corr), 
+                    "white"= 0, 
+                    "firebrick"= max(h.data.3d.2$mean_corr))) %>% 
+  add_glassbrain() 
+
+```
+
+
