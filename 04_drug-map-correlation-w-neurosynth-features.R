@@ -22,13 +22,14 @@ dimensions <- inner_join(ns.features %>% select(1:3),
 drug.f.maps <- cor(inner_join(dimensions, drug.corr %>% 
                                 select(-c(starts_with("dim"))) %>% 
                                 rename(x = mni_x, y = mni_y, z = mni_z)) %>% 
-                     select(-c(x,y,z)),
+                     select(-c(x,y,z)) %>% as.matrix(),
                    inner_join(dimensions, ns.features %>% 
                                 mutate_at(.vars = vars(x,y,z), .funs = function(x) round(x)) %>%
                                 distinct(x,y,z, .keep_all = T)) %>%
-                     select(-c(x,y,z)),
-                   method = "spearman")
+                     select(-c(x,y,z)) %>% as.matrix(),
+                   type = "spearman")
 pdssave(drug.f.maps, file = "data/drug-features-correlations-by-xyz-in-MNI-only.rds")
+# drug.f.maps <- pdsload(fname = "data/drug-features-correlations-by-xyz-in-MNI-only.rds.pxz")
 #################################################################################
 long.drug.f.map <- drug.f.maps %>%
   as.data.frame() %>%
@@ -37,9 +38,12 @@ long.drug.f.map <- drug.f.maps %>%
 
 long.drug.f.map %>%
   filter(c_drug %in% drugs, 
-         grepl(str_c(tolower(brain.networks), collapse = "|"), feature)
-         # grepl(str_c(tolower(personality.traits), collapse = "|"), feature)
+         # grepl(str_c(tolower(brain.networks), collapse = "|"), feature)
          # grepl(str_c(tolower(brain.regions), collapse = "|"), feature)
+        # grepl(str_c(tolower(phenotypes$phenotype[which(phenotypes$category == "disorder")]), collapse = "|"), feature)
+        # concepts categories are: action, attention, emotion, executive-cognitive control, language
+        # memory, motivation, perception, reasoning and decision making, social function
+        grepl(str_c(tolower(concepts$concept[which(concepts$category == "motivation")]), collapse = "|"), feature)
          ) %>%
   ggplot(aes(x=c_drug, y=feature, fill = val, label = round(val, 3))) +
   geom_tile()+
@@ -56,13 +60,6 @@ brain.networks <- c("default mode", "sensorimotor", "visual", "limbic",
                     "fronto parietal", "language", "cingulo opercular"
                     # ,"network"
                     )
-personality.traits <- c("agreeableness","alexithymia","conscientiousness",
-                        "cooperativeness","extraversion","harm avoidance",
-                        "honesty","impulsiveness","neuroticism",
-                        "novelty seeking","openness to experience",
-                        "persistence","reward dependence",
-                        "self directedness","self esteem","self transcendence",
-                        "sensation-seeking")
 brain.regions <- c("putamen", "cortex", "basal ganglia", "caudate", "thalamus", "insula", "cerebellar",
                    "striatum", "promotor cortex", "frontal cortices", "prefrontal cortex", "amygdala",
                    "cingulate", "anterior cingulate", "cingulate gyrus")
@@ -73,3 +70,5 @@ drugs <- c("methylphenidate", "sertraline", "venlafaxine", "fluoxetine",
            "haloperidol", "histamine", "ibuprofen", "ketamine", 
            "lidocaine", "nicotine", "orlistat", "paroxetine",
            "risperidone", "sumatriptan", "topiramate")
+concepts <- read_csv("/wdata/msmuhammad/data/cognitive-atlas/concepts.csv")
+phenotypes <- read_csv("/wdata/msmuhammad/data/cognitive-atlas/phenotypes.csv")
