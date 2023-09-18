@@ -38,3 +38,32 @@ gc()
 write_tsv(aggregated_data, "data/neurosynth/features-data-by-xyz-in-MNI-only.tsv")
 pdssave(aggregated_data, file = "data/neurosynth/features-data-by-xyz-in-MNI-only.rds")
 #################################################################################
+# filtering terms criteria
+ns.features.all <- pdsload(fname = "data/neurosynth/features-data-by-xyz-in-MNI-only.rds.pxz") %>% as.data.frame()
+registerDoMC(cores = 8)
+features.meta.2 <- foreach(i=4:ncol(ns.features.all), .combine = rbind) %dopar% {
+  f <- colnames(ns.features.all)[i]
+  data.frame(feature = colnames(ns.features.all)[i],
+             n_activations = sum(ns.features.all[,i]>0),
+             n_publications = sum(features[,f]>0),
+             avg_activations = mean(as.numeric(ns.features.all[ns.features.all[,i]>0,i])),
+             min_activations = min(as.numeric(ns.features.all[ns.features.all[,i]>0,i])),
+             max_activations = max(as.numeric(ns.features.all[ns.features.all[,i]>0,i])))
+}
+features.meta.2 %>% 
+  ggplot(aes(x=n_activations)) +
+  geom_histogram(bins = 50)
+features.meta.2 %>% 
+  ggplot(aes(x=avg_activations)) +
+  geom_histogram(bins = 50)
+features.meta.2 %>% 
+  ggplot(aes(x=n_publications)) +
+  geom_histogram(bins = 50)
+
+features.meta.2 %>% 
+  pivot_longer(cols = c(avg_activations, min_activations, max_activations),
+               names_to = "type", values_to = "val") %>%
+  ggplot(aes(x=val, color = type)) +
+  geom_density()
+
+

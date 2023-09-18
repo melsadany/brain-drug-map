@@ -21,6 +21,7 @@ library(plotly)
 project.dir <- "/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map"
 setwd(project.dir)
 knitr::opts_knit$set(root.dir = project.dir)
+scene <- list(camera = list(eye = list(x = 1.5, y = 0, z = 0)))
 ```
 
 
@@ -79,7 +80,17 @@ ggseg3d(data.3d.lh,
         palette = c("forestgreen" = min(data.3d.lh$mean_corr), 
                     "white" = 0, 
                     "firebrick" = max(data.3d.lh$mean_corr)), 
-        hemisphere = "left")
+        hemisphere = "left") %>%
+  remove_axes() %>%
+  layout(scene = list(camera = list(eye = list(x = 1.5, y = 0, z = 0)))) %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "left-hemisphere",
+      width = 1100,
+      height = 700
+    )
+  )
 
 ```
 
@@ -101,7 +112,17 @@ ggseg3d(data.3d.rh,
         palette = c("forestgreen" = min(data.3d.rh$mean_corr), 
                     "white" = 0, 
                     "firebrick" = max(data.3d.rh$mean_corr)), 
-        hemisphere = "right")
+        hemisphere = "right") %>%
+  remove_axes() %>%
+  layout(scene = scene) %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "right-hemisphere",
+      width = 1100,
+      height = 700
+    )
+  )
 
 ```
 
@@ -143,8 +164,50 @@ ggseg3d(h.data.3d.2, atlas = aseg_3d,
         palette = c("forestgreen"= min(h.data.3d.2$mean_corr), 
                     "white"= 0, 
                     "firebrick"= max(h.data.3d.2$mean_corr))) %>% 
-  add_glassbrain() 
+  add_glassbrain() %>%
+  remove_axes() %>%
+  layout(scene = scene) %>%
+  config(
+    toImageButtonOptions = list(
+      format = "svg",
+      filename = "subcortical",
+      width = 1100,
+      height = 700
+    )
+  )
 
 ```
 
+```{r}
+# combine plots
+lh <- ggseg3d(data.3d.lh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen" = min(avg.h.data$mean_corr), 
+                    "white" = 0, 
+                    "firebrick" = max(avg.h.data$mean_corr)), 
+        hemisphere = "left") %>%
+  remove_axes()
+rh <- ggseg3d(data.3d.rh, 
+        atlas = dkt_3d,
+        colour = "mean_corr", text = "mean_corr",
+        palette = c("forestgreen" = min(avg.h.data$mean_corr), 
+                    "white" = 0, 
+                    "firebrick" = max(avg.h.data$mean_corr)), 
+        hemisphere = "right",
+        show.legend = F) %>%
+  remove_axes()
+sc <- ggseg3d(h.data.3d.2, atlas = aseg_3d, 
+        colour = "mean_corr", text = "mean_corr", 
+        na.alpha= .5,
+        palette = c("forestgreen"= min(avg.h.data$mean_corr), 
+                    "white"= 0, 
+                    "firebrick"= max(avg.h.data$mean_corr)),
+        show.legend = F) %>% 
+  remove_axes()
+
+p <- subplot(lh,rh,sc) %>%
+  layout(scene = scene) 
+htmlwidgets::saveWidget(as_widget(p), paste0("data/maps/model-082223/interactive-maps/", med, ".html"))
+```
 

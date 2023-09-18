@@ -1,0 +1,15 @@
+#! /bin/bash
+#$ -cwd
+#$ -q UI-HM
+#$ -pe smp 64
+#$ -N drug-map-correlation-w-neurosynth-features
+#$ -o logs/$JOB_NAME.$TASK_ID.log
+#$ -j y
+#$ -ckpt user
+
+conda activate tximpute2
+PROJECT_DIR=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map
+cd $PROJECT_DIR
+
+RSCRIPT_F=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/04_drug-map-correlation-w-neurosynth-features.R
+Rscript $RSCRIPT_F 
