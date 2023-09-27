@@ -26,7 +26,8 @@ beh.meta <- data.frame(file = list.files("/Dedicated/jmichaelson-wdata/msmuhamma
   mutate(sub_domain = str_replace_all(sub("^[^.]+\\.(.*?)", "", 
                                           sub("_Z.nii.gz", "", file)),
                                       pattern = "[^A-Za-z]+", replacement = "_")) %>%
-  mutate(full_label = paste0(domain, "_", sub_domain))
+  mutate(full_label = paste0(domain, "_", sub_domain)) %>%
+  mutate(sub_domain = ifelse(sub_domain=="All", paste0(domain, "_All"), sub_domain))
 ###
 beh.maps.nii <- list()
 beh.maps.df <- data.frame(mni.hit)
@@ -113,7 +114,16 @@ inner_join(drug.corr, beh.meta %>% rename(V1 = full_label)) %>%
        "\n\ti.e., a negative correlation means we predicted the drug to make a change in a region that is activated for that specific behavior",
        "\n\ti.e., a positive correlation means we predicted the drug to have a similar gene expression to the region that is activated for that specific behavior"))
 
-
+inner_join(drug.corr, beh.meta %>% rename(V1 = full_label)) %>%
+  ggplot(aes(x=r)) +
+  geom_histogram()+
+  facet_wrap(vars(sub_domain), scales = "free")+
+  labs(title = "distribution of predicted correlation of all ~700 drugs with behavior maps")
+inner_join(drug.corr, beh.meta %>% rename(V1 = full_label)) %>%
+  ggplot(aes(x=pval)) +
+  geom_histogram()+
+  facet_wrap(vars(sub_domain), scales = "free")+
+  labs(title = "distribution of pval of correlation of all ~700 drugs with behavior maps")
 
 
 
