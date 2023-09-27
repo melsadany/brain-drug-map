@@ -66,7 +66,8 @@ m2 <- rbind(inner_join(dimensions, ns.features %>%
             miss) %>%
   select(-c(x,y,z))
 gc()
-drug.f.maps <- corr.func(m1, m2, method = "spearman")
+drug.f.maps <- cor(m1, m2, method = "spearman")
+# drug.f.maps <- corr.func(m1, m2, method = "spearman")
 gc()
 # pdssave(drug.f.maps, file = "data/drug-features-correlations-by-xyz-in-predicted-MNI-wpval.rds")
 pdssave(drug.f.maps, file = "data/drug-features-correlations-by-xyz-in-predicted-MNI-wpval-beh.rds")
