@@ -26,8 +26,8 @@ setwd(project.dir)
 # in case of running out of memory after saving the predictions file, only do the correlation again
 #################################################################################
 # compute correlation with drug signatures
-# predictions <- pdsload("data/model-derivatives/gene-exp-whole-brain-082223.rds.pxz")
-predictions <- pdsload("data/model-derivatives/gene-exp-whole-brain-drug-genes-082223.rds.pxz")
+# predictions <- pdsload("data/model-derivatives/gene-exp-whole-brain-092723.rds.pxz")
+predictions <- pdsload("data/model-derivatives/gene-exp-whole-brain-drug-genes-092723.rds.pxz")
 pload("/Dedicated/jmichaelson-sdata/CMAP/LINCS/small_mol_metadata_w_BBB_FDA.Rdata.pxz")
 bbb.drugs <- smol_meta %>%
   filter(FDA == T, BBB_perm>0.5)
@@ -39,7 +39,7 @@ drug.sig <- read_rds("/Dedicated/jmichaelson-wdata/msmuhammad/data/LINCS/cmap.of
   select(any_of(bbb.drugs$pert_name))
 predictions <- scale(predictions[,rownames(drug.sig)], scale = T, center = T)
 table(rownames(drug.sig) == colnames(predictions))
-# pdssave(predictions, file = "data/model-derivatives/gene-exp-whole-brain-drug-genes-082223.rds")
+# pdssave(predictions, file = "data/model-derivatives/gene-exp-whole-brain-drug-genes-092723.rds")
 #################################################################################
 mni <- readNIfTI("/Dedicated/jmichaelson-wdata/msmuhammad/refs/fsl-data/standard/MNI152_T1_1mm_brain.nii.gz", reorient = F)
 origin <- c(91,127,73)
@@ -51,7 +51,7 @@ mni.hit <- which(mni>0, arr.ind = T) %>%
 mni.hit.whole <- mni.hit
 # compute correlations with drugs
 drug.corr <- cor(t(predictions), drug.sig)
-pdssave(cbind(mni.hit.whole, drug.corr), file = "data/all-drug-map-predicted-exp-whole-brain-082223.rds")
+pdssave(cbind(mni.hit.whole, drug.corr), file = "data/all-drug-map-predicted-exp-whole-brain-092723.rds")
 #################################################################################
 small <- cbind(mni.hit.whole, drug.corr) %>% as.data.frame() %>% select(colnames(mni.hit.whole), 
                                                                   methylphenidate, venlafaxine, guanfacine, 
@@ -63,6 +63,6 @@ small <- cbind(mni.hit.whole, drug.corr) %>% as.data.frame() %>% select(colnames
                                                                   loxapine, minoxidil, naproxen, nicotine, paroxetine, 
                                                                   risperidone, tramadol, trazodone, venlafaxine, 
                                                                   verapamil, zolpidem)
-pdssave(small, file = "data/subsetof-drug-map-predicted-exp-whole-brain-082223.rds")
+pdssave(small, file = "data/subsetof-drug-map-predicted-exp-whole-brain-092723.rds")
 #################################################################################
 #################################################################################

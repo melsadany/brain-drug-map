@@ -90,11 +90,13 @@ history <- model %>% fit(
   batch_size = ncol(y.train),
   validation_split = 0.01,
   verbose=1,
-  callbacks = list(callback_tensorboard()),
-  sample_weight=list(w0,w0)
-  )
+  callbacks = list(callback_tensorboard())
+)
 w <- get_weights(model)
 save_model_tf(model, "data/model-derivatives/gene-exp-prediction-model-r205-092723")
+
+o2 <- get_layer(model,'dense_4')$output
+model2 <- keras_model(ipt,o2)
 
 mni <- readNIfTI("/Dedicated/jmichaelson-wdata/msmuhammad/refs/fsl-data/standard/MNI152_T1_1mm_brain.nii.gz", reorient = F)
 origin <- c(91,127,73)
@@ -104,7 +106,7 @@ mni.hit <- which(mni>0, arr.ind = T) %>%
   mutate(mni_y = dim2-origin[2]) %>%
   mutate(mni_z = dim3-origin[3])
 mni.hit.whole <- mni.hit %>% as.matrix()
-predictions <- predict(model, mni.hit.whole[,4:6])
+predictions <- predict(model2, mni.hit.whole[,4:6])
 colnames(predictions) <- rownames(r2)[r2[,1]>0.5]
 pdssave(cbind(mni.hit.whole, predictions), file = "data/model-derivatives/gene-exp-whole-brain-092723.rds")
 #################################################################################
