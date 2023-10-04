@@ -342,6 +342,7 @@ server <- function(input, output) {
   app_dt <- reactive({
     datapath <- paste0("/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/data/maps/model-092723/gene-exp/", input$fileSelect, ".nii.gz")
     out <- read_img_as_array(datapath)
+    out[out == 0] <- NA
     return(out)
   })
   output$raster_panel <- renderUI({
