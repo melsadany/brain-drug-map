@@ -1,63 +1,11 @@
-################################################################################
-#           produce interactive 3d maps for drug maps and save them            #
-################################################################################
-rm(list = ls())
-gc()
-source("/Dedicated/jmichaelson-wdata/msmuhammad/msmuhammad-source.R")
-library(plotly)
-library(ggseg3d)
-library(ggsegDKT)
-library(ggseg)
-scene <- list(camera = list(eye = list(x = 1.5, y = 0, z = 0)))
-#################################################################################
-#################################################################################
-project.dir <- "/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map"
-setwd(project.dir)
-#################################################################################
-#################################################################################
-# read the drug activity maps
-annot <- read_rds("/Dedicated/jmichaelson-wdata/msmuhammad/refs/mni_icbm152_nlin_sym_09c_CerebrA_nifti/annotated-xyz.rds")[,5:9]
-drug.maps <- pdsload("data/all-drug-map-predicted-exp-whole-brain-092723.rds.pxz")
-drugs <- colnames(drug.maps)[7:ncol(drug.maps)]
-# #### 
-# # indep section to save average correlations per region in a csv
-# avg.drug.map <- inner_join(annot,
-#                        drug.maps[,-c(1:3)]) %>%
-#   as.data.frame() %>%
-#   mutate(region_2 = sub("_", " ", region)) %>%
-#   mutate(h_region = sub("rh_", "right ", h_region)) %>%
-#   mutate(h_region = sub("lh_", "left ", h_region)) %>%
-#   mutate(h_region = sub("_", " ", h_region)) %>%
-#   pivot_longer(cols = drugs, names_to = "drug", values_to = "corr") %>%
-#   group_by(drug, h_region) %>%
-#   dplyr::summarize(mean_corr = mean(corr)) %>%
-#   drop_na() 
-# gc()
-# tmp <- avg.drug.map %>% pivot_wider(names_from="drug", values_from="mean_corr")
-# write_csv(tmp, file = "data/all-drug-map-activity-averaged-by-anatomical-region-092723.csv")
-# ####
-gc()
-#################################################################################
-# iterate over the list of drugs and make a map for each
-registerDoMC(cores = 6)
-foreach(i=1:length(drugs)) %dopar% {
-  gc()
-  med <- drugs[i]
-  drug.map <- inner_join(annot,
-                         cbind(drug.maps[,4:6], drug.maps[,med])) %>%
-    as.data.frame() %>%
-    rename(corr=6) %>%
-    mutate(region_2 = sub("_", " ", region)) %>%
-    mutate(h_region = sub("rh_", "right ", h_region)) %>%
-    mutate(h_region = sub("lh_", "left ", h_region)) %>%
-    mutate(h_region = sub("_", " ", h_region))
-  gc()
-  #################################################################################
-  # averaging data based on h_region label
-  avg.h.data <- drug.map %>%
-    group_by(h_region) %>%
-    dplyr::summarize(mean_corr = mean(corr)) %>%
-    drop_na()
+###################################################################################
+#                               ggseg plotly function                             #
+###################################################################################
+
+brain_3d <- function(avg.drug.map, drug = "methylphenidate") {
+  avg.h.data <- avg.drug.map %>%
+    select(h_region, drug) %>%
+    rename(mean_corr = 2)
   gc()
   #################################################################################
   # left hemisphere
@@ -147,16 +95,16 @@ foreach(i=1:length(drugs)) %dopar% {
   
   p <- subplot(lh,rh,sc) %>%
     layout(scene = scene)  %>% 
-    layout(title = paste0("predicted activity map for: ", med)) %>%
+    style(hoverlabel = list(font = list(color = "black"))) %>%
+    layout(title = paste0("predicted activity map for: ", drug)) %>%
     config(
       toImageButtonOptions = list(
         format = "svg",
-        filename = med,
+        filename = drug,
         width = 1100,
         height = 700
       )
     )
-  htmlwidgets::saveWidget(as_widget(p), paste0("data/maps/model-092723/interactive-maps/", med, ".html"))
-  gc()
-  #################################################################################
+  return(p)
+  # htmlwidgets::saveWidget(as_widget(p), paste0("data/maps/model-092723/interactive-maps/", med, ".html"))
 }

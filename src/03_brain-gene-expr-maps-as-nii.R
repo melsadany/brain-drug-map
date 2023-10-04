@@ -36,13 +36,13 @@ mni.hit <- which(mni>0, arr.ind = T) %>%
   mutate(mni_z = dim3-origin[3])
 mni.hit.whole <- mni.hit
 #################################################################################
-gene.map <- pdsload(fname = "data/model-derivatives/gene-exp-whole-brain-082223.rds.pxz") %>% as.data.frame()
+gene.map <- pdsload(fname = "data/model-derivatives/gene-exp-whole-brain-092723.rds.pxz") %>% as.data.frame()
 print("done reading the mar")
 #################################################################################
 # make nifti per gene
 genes <- colnames(gene.map)
 library(doMC);registerDoMC(6)
-system("mkdir -p data/maps/model-082223/gene-exp")
+system("mkdir -p data/maps/model-092723/gene-exp")
 foreach::foreach(i=1:length(genes)) %dopar% {
   d <- colnames(gene.map)[i]
   med <- inner_join(mni.hit.whole,
@@ -59,7 +59,7 @@ foreach::foreach(i=1:length(genes)) %dopar% {
   pct = drop_img_dim(pct)
   pct = zero_trans(pct)
   pct = onefile(pct)
-  tfile = paste0("data/maps/model-082223/gene-exp/", genes[i])
+  tfile = paste0("data/maps/model-092723/gene-exp/", genes[i])
   writeNIfTI(pct, filename = tfile, verbose=TRUE)
   pct = datatyper(pct, type_string = "FLOAT32")
   writeNIfTI(pct, filename = tfile)

@@ -14,13 +14,11 @@ scene <- list(camera = list(eye = list(x = 1.5, y = 0, z = 0)))
 #################################################################################
 project.dir <- "/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map"
 setwd(project.dir)
+source("src/functions/brain_3d.R")
 #################################################################################
 #################################################################################
-# List all HTML files in the directory
-html_files <- list.files("data/maps/model-082223/interactive-maps", pattern = "\\.html$", full.names = TRUE)
-
-# Extract file names without path and ".html" extension
-file_names <- gsub(".html$", "", basename(html_files))
+drug.correlations <- read_csv("/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/data/all-drug-map-activity-averaged-by-anatomical-region-092723.csv")
+file_names <- colnames(drug.correlations)[-1]
 
 # Define UI
 ui <- fluidPage(
@@ -51,7 +49,16 @@ ui <- fluidPage(
   ),
   tags$head(
     tags$style(
-      HTML(".dataTables_filter input {width: 50px !important; /* Adjust the width as needed */}")
+      HTML(
+        "
+      .shiny-plotly-output-container {
+        height: 100% !important;
+      }, 
+      .dataTables_filter input {
+        width: 50px !important; /* Adjust the width as needed */
+      }
+      "
+      )
     )
   )
 )
@@ -59,15 +66,7 @@ ui <- fluidPage(
 # Define server
 server <- function(input, output) {
   output$plotFrame <- renderUI({
-    selected_file <- readLines(paste0("data/maps/model-082223/interactive-maps/", 
-                                      input$fileSelect, ".html"))
-    file_content <- paste(selected_file, collapse = "\n")
-    tags$iframe(
-      srcdoc = file_content,
-      width = "1000px",
-      height = "800px",
-      style = "border: none;"
-    )
+    brain_3d(drug.correlations, drug = input$fileSelect)
   })
   
   # Define the UI for the data table
@@ -78,7 +77,7 @@ server <- function(input, output) {
   
   # Render the data table
   output$data_table <- renderDataTable({
-    data <- read_csv("data/all-drug-map-activity-averaged-by-anatomical-region-082223.csv")
+    data <- read_csv("/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/data/all-drug-map-activity-averaged-by-anatomical-region-092723.csv")
     data[, c(1, which(colnames(data) == input$fileSelect))]
   }, options = list(pageLength = 10))
   

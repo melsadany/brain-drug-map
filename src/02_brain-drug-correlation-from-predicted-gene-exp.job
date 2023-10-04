@@ -11,5 +11,5 @@ conda activate tximpute2
 PROJECT_DIR=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map
 cd $PROJECT_DIR
 
-RSCRIPT_F=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/02_brain-drug-correlation-from-predicted-gene-exp.R
+RSCRIPT_F=/Dedicated/jmichaelson-wdata/msmuhammad/projects/brain-drug-map/src/02_brain-drug-correlation-from-predicted-gene-exp.R
 Rscript $RSCRIPT_F 

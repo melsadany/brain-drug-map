@@ -31,7 +31,7 @@ phenotypes <- read_csv("/Dedicated/jmichaelson-wdata/msmuhammad/data/cognitive-a
 # load neurosynth MNI features
 ns.features.all.0 <- pdsload(fname = "data/neurosynth/features-data-by-xyz-in-MNI-only.rds.pxz") %>% as.data.frame()
 # load drug maps
-drug.corr <- pdsload(fname = "data/all-drug-map-predicted-exp-whole-brain-082223.rds.pxz") %>% as.data.frame()
+drug.corr <- pdsload(fname = "data/all-drug-map-predicted-exp-whole-brain-092723.rds.pxz") %>% as.data.frame()
 gc()
 #################################################################################
 # keep features of interest

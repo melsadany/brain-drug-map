@@ -44,12 +44,12 @@ drug.sig <- read_rds("/Dedicated/jmichaelson-wdata/msmuhammad/data/LINCS/cmap.of
   t() %>%
   as.data.frame() %>%
   select(any_of(bbb.drugs$pert_name))
-drug.corr <- pdsload(fname = "data/all-drug-map-predicted-exp-whole-brain-082223.rds.pxz") %>% as.data.frame()
+drug.corr <- pdsload(fname = "data/all-drug-map-predicted-exp-whole-brain-092723.rds.pxz") %>% as.data.frame()
 #################################################################################
 # make nifti per drug
 drugs <- colnames(drug.sig)
 library(doMC);registerDoMC(6)
-system("mkdir -p data/maps/model-082223/all")
+system("mkdir -p data/maps/model-092723/all")
 foreach::foreach(i=1:length(drugs)) %dopar% {
   d <- colnames(drug.sig)[i]
   med <- inner_join(mni.hit.whole,
@@ -66,7 +66,7 @@ foreach::foreach(i=1:length(drugs)) %dopar% {
   pct = drop_img_dim(pct)
   pct = zero_trans(pct)
   pct = onefile(pct)
-  tfile = paste0("data/maps/model-082223/all/", drugs[i])
+  tfile = paste0("data/maps/model-092723/all/", drugs[i])
   writeNIfTI(pct, filename = tfile, verbose=TRUE)
   pct = datatyper(pct, type_string = "FLOAT32")
   writeNIfTI(pct, filename = tfile)
